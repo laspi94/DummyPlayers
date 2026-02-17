@@ -28,7 +28,7 @@ repositories {
 dependencies {
     implementation(libs.kotlin.stdlib)
     compileOnly(files("libs/HytaleServer.jar"))
-    implementation(files("libs/HyUI-0.5.10-all.jar"))
+    implementation(files("libs/HyUI-0.8.8-release-server-version.jar"))
     implementation(libs.annotations)
     compileOnly(libs.gson)
 }
@@ -94,29 +94,4 @@ tasks {
 val serverRunDir = file("$projectDir/run")
 if (!serverRunDir.exists()) {
     serverRunDir.mkdirs()
-}
-
-// Adds a "HytaleServer" run button to IntelliJ
-idea {
-    project {
-        settings {
-            runConfigurations {
-                register<Application>("HytaleServer") {
-                    mainClass = "com.hypixel.hytale.Main"
-                    moduleName = "${project.name}.main"
-
-                    val args = mutableListOf(
-                        "--allow-op",
-                        "--assets=$hytaleServerRoot\\Assets.zip"
-                    )
-
-                    val modPath = sourceSets.main.get().java.srcDirs.first().parentFile.absolutePath
-                    args.add("--mods=$modPath")
-
-                    programParameters = args.joinToString(" ")
-                    workingDirectory = serverRunDir.absolutePath
-                }
-            }
-        }
-    }
 }

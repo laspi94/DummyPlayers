@@ -1,7 +1,9 @@
 {
   "Type": "Abstract",
   "StartState": "Idle",
-  "Groups": [ "Dummy" ],
+  "Groups": [
+    "Dummy"
+  ],
   "Faction": "Neutral",
   "Parameters": {
     "Appearance": {
@@ -21,13 +23,19 @@
       "Description": "Translation key for NPC name display"
     }
   },
-  "Appearance": { "Compute": "Appearance" },
-  "MaxHealth": { "Compute": "MaxHealth" },
+  "Appearance": {
+    "Compute": "Appearance"
+  },
+  "MaxHealth": {
+    "Compute": "MaxHealth"
+  },
   "KnockbackScale": 1.0,
   "MotionControllerList": [
     {
       "Type": "Walk",
-      "MaxWalkSpeed": { "Compute": "MaxSpeed" },
+      "MaxWalkSpeed": {
+        "Compute": "MaxSpeed"
+      },
       "Gravity": 10,
       "RunThreshold": 0.3,
       "MaxFallSpeed": 15,
@@ -47,7 +55,11 @@
           "Parent": "NPC_Receive_Damage",
           "Radius": 0.5,
           "Height": 1.8,
-          "Offset": [ 0, 0, 0 ]
+          "Offset": [
+            0,
+            0,
+            0
+          ]
         }
       ]
     }
@@ -74,5 +86,7 @@
       ]
     }
   ],
-  "NameTranslationKey": { "Compute": "NameTranslationKey" }
+  "NameTranslationKey": {
+    "Compute": "NameTranslationKey"
+  }
 }

@@ -36,6 +36,7 @@ import com.hypixel.hytale.server.npc.role.Role
 import com.hypixel.hytale.server.npc.role.support.RoleStats
 import com.hypixel.hytale.server.npc.systems.RoleChangeSystem
 import com.hypixel.hytale.server.npc.util.expression.ExecutionContext
+import com.hypixel.hytale.protocol.NetworkChannel
 import io.netty.channel.embedded.EmbeddedChannel
 import me.justlime.dummyplayer.component.DummyPlayerComponent
 import me.justlime.dummyplayer.listener.DummyPlayerEvent
@@ -79,6 +80,12 @@ object DummyPlayerService {
         val protocolVersion = ProtocolVersion(ProtocolSettings.PROTOCOL_VERSION)
         val authentication = PlayerAuthentication(uuid, username)
         val dummyHandler = DummyPacketHandler(embeddedChannel, protocolVersion, authentication)
+
+        // Populate all NetworkChannel slots so writePacket never hits a null channel
+        for (nc in NetworkChannel.VALUES) {
+            dummyHandler.setChannel(nc, embeddedChannel)
+        }
+
         val event = DummyPlayerEvent.setupConnect(dummyHandler, username, uuid, authentication)
         if (event != null && event.isCancelled) {
             val reason = event.reason ?: "Connection rejected."
@@ -181,9 +188,21 @@ object DummyPlayerService {
         world: World? = null
     ): NPCEntity {
         val npcEntity = NPCEntity()
+        val plugin = NPCPlugin.get()
         val roleName = "Dummy_Player"
+
+        // Validate that the role template is registered before using it
+        if (!plugin.hasRoleName(roleName)) {
+            val available = plugin.getRoleTemplateNames(false)
+            println("[DummyPlayer] Role '$roleName' not found! Available roles: $available")
+            throw IllegalStateException(
+                "NPC role template '$roleName' is not registered. " +
+                "Ensure the asset pack is loaded and the template Type is not 'Abstract'."
+            )
+        }
+
         npcEntity.roleName = roleName
-        npcEntity.roleIndex = NPCPlugin.get().getIndex(roleName)
+        npcEntity.roleIndex = plugin.getIndex(roleName)
 
         if (world != null) {
             val worldTime = world.entityStore.store.getResource(WorldTimeResource.getResourceType())
@@ -194,7 +213,6 @@ object DummyPlayerService {
             npcEntity.saveLeashInformation(position, rotation)
         }
 
-        val plugin = NPCPlugin.get()
         val roleIndex = npcEntity.roleIndex
         val builderInfo = plugin.prepareRoleBuilderInfo(roleIndex)
 

@@ -1,0 +1,42 @@
+{
+    "Type": "Generic",
+    "Appearance": "Player",
+    "Groups": [
+        "Dummy"
+    ],
+    "KnockbackScale": 1,
+    "MotionControllerList": [
+        {
+            "Type": "Walk",
+            "MaxWalkSpeed": 7,
+            "Gravity": 10,
+            "MaxFallSpeed": 15,
+            "MaxRotationSpeed": 360,
+            "Acceleration": 10
+        }
+    ],
+    "MaxHealth": {
+        "Compute": "MaxHealth"
+    },
+    "Parameters": {
+        "MaxHealth": {
+            "Value": 20,
+            "Description": "Max health for the NPC"
+        }
+    },
+    "Instructions": [
+        {
+            "Instructions": [
+                {
+                    "Sensor": {
+                        "Type": "Any"
+                    },
+                    "BodyMotion": {
+                        "Type": "Nothing"
+                    }
+                }
+            ]
+        }
+    ],
+    "NameTranslationKey": "server.npcRoles.Dummy_Player.name"
+}

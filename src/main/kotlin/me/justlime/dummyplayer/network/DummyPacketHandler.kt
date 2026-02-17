@@ -1,6 +1,6 @@
 package me.justlime.dummyplayer.network
 
-import com.hypixel.hytale.protocol.Packet
+import com.hypixel.hytale.protocol.ToClientPacket
 import com.hypixel.hytale.protocol.packets.interface_.ServerMessage
 import com.hypixel.hytale.server.core.Message
 import com.hypixel.hytale.server.core.auth.PlayerAuthentication
@@ -21,7 +21,7 @@ class DummyPacketHandler(
         return "DummyConnection"
     }
 
-    override fun write(packet: Packet) {
+    override fun write(packet: ToClientPacket) {
         if (packet is ServerMessage) {
             val dummyName = this.auth?.username ?: return
             val formattedMessage = packet.message ?: return
@@ -29,15 +29,21 @@ class DummyPacketHandler(
             DummyChatListener.onPacketSend(dummyName, message)
             return
         }
+        // Silently discard all other packets — no real client to send to
     }
 
-    override fun write(vararg packets: Packet) {
+    override fun write(vararg packets: ToClientPacket) {
         for (p in packets) {
             write(p)
         }
     }
 
-    override fun writeNoCache(packet: Packet) {
+    override fun writeNoCache(packet: ToClientPacket) {
+        write(packet)
+    }
+
+    override fun writePacket(packet: ToClientPacket, cache: Boolean) {
+        // No-op: prevent any packet from reaching the channel
         write(packet)
     }
 
