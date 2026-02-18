@@ -22,6 +22,8 @@ object UIManager {
     // Maps Player UUID -> List of ChatLines for their UI view
     private val playerChatLogs = ConcurrentHashMap<UUID, MutableList<ChatLine>>()
 
+    // Synchronization lock to prevent race conditions in event callbacks
+    private val lock = Any()
     fun open(playerRef: PlayerRef) {
         val playerUuid = playerRef.uuid
         val selectedDummy = DummySelectorService.getSelectedDummy(playerUuid)
@@ -48,52 +50,58 @@ object UIManager {
         // Register event listeners at page level (required for HYUIML elements)
         // Dummy Selector - ValueChanged
         pageBuilder.addEventListener("dummy-list", CustomUIEventBindingType.ValueChanged) { data, ctx ->
-            val value = ctx.getValue("dummy-list", String::class.java).orElse(data?.toString())
-            if (value != null) {
-                DummySelectorService.selectDummy(playerUuid, value)
-                reopen(playerRef)
+            synchronized(lock) {
+                val value = ctx.getValue("dummy-list", String::class.java).orElse(data?.toString())
+                if (value != null) {
+                    DummySelectorService.selectDummy(playerUuid, value)
+                    reopen(playerRef)
+                }
             }
         }
 
         // Chat Input - Validating (fires on Enter/submit)
         pageBuilder.addEventListener("chat-input", CustomUIEventBindingType.Validating) { data, ctx ->
-            val inputFromCtx = ctx.getValue("chat-input", String::class.java).orElse(null)
-            val inputFromData = data?.toString()
-            val input = inputFromCtx ?: inputFromData
+            synchronized(lock) {
+                val inputFromCtx = ctx.getValue("chat-input", String::class.java).orElse(null)
+                val inputFromData = data?.toString()
+                val input = inputFromCtx ?: inputFromData
 
-            if (input.isNullOrBlank()) return@addEventListener
+                if (input.isNullOrBlank()) return@addEventListener
 
-            val currentDummy = DummySelectorService.getSelectedDummy(playerUuid)
-            if (currentDummy == null) {
-                playerRef.sendMessage(Message.raw("You must select a dummy"))
-                return@addEventListener
-            }
+                val currentDummy = DummySelectorService.getSelectedDummy(playerUuid)
+                if (currentDummy == null) {
+                    playerRef.sendMessage(Message.raw("You must select a dummy"))
+                    return@addEventListener
+                }
 
-            val dummyRef = DummyPlayerService.getDummy(currentDummy)
-            if (dummyRef == null) {
-                playerRef.sendMessage(Message.raw("Dummy Ref not found"))
-                return@addEventListener
-            }
+                val dummyRef = DummyPlayerService.getDummy(currentDummy)
+                if (dummyRef == null) {
+                    playerRef.sendMessage(Message.raw("Dummy Ref not found"))
+                    return@addEventListener
+                }
 
-            sendChat(dummyRef, input) {
-                reopen(playerRef)
+                sendChat(dummyRef, input) {
+                    reopen(playerRef)
+                }
             }
         }
 
         // Pov Button - Activating
         pageBuilder.addEventListener("pov-btn", CustomUIEventBindingType.Activating) { _, ctx ->
-            val currentDummy = DummySelectorService.getSelectedDummy(playerUuid)
-            if (currentDummy == null) {
-                playerRef.sendMessage(Message.raw("You must select a dummy"))
-                return@addEventListener
+            synchronized(lock) {
+                val currentDummy = DummySelectorService.getSelectedDummy(playerUuid)
+                if (currentDummy == null) {
+                    playerRef.sendMessage(Message.raw("You must select a dummy"))
+                    return@addEventListener
+                }
+                val dummyRef = DummyPlayerService.getDummy(currentDummy)
+                if (dummyRef == null) {
+                    playerRef.sendMessage(Message.raw("Dummy Ref not found"))
+                    return@addEventListener
+                }
+//              DummyControllerService.toggleControlling(playerRef, dummyRef)
+                ctx.page.get().close()
             }
-            val dummyRef = DummyPlayerService.getDummy(currentDummy)
-            if (dummyRef == null) {
-                playerRef.sendMessage(Message.raw("Dummy Ref not found"))
-                return@addEventListener
-            }
-//            DummyControllerService.toggleControlling(playerRef, dummyRef)
-            ctx.page.get().close()
         }
 
         playerRef.reference?.store?.let { pageBuilder.open(it) }
@@ -126,37 +134,39 @@ object UIManager {
     }
 
     private fun sendChat(playerRef: PlayerRef, input: String, onFinished: () -> Unit = {}) {
-        if (input.isBlank()) {
-            onFinished()
-            return
-        }
-
-        if (!playerRef.isValid) {
-            playerRef.sendMessage(Message.raw("reference not found or invalid entity"))
-            return
-        }
-        val store = playerRef.reference?.store
-        if (store == null) {
-            playerRef.sendMessage(Message.raw("store not found"))
-            return
-        }
-        val world = store.externalData.world
-        world.execute {
-            val future: CompletableFuture<Void> = when (input.first()) {
-                '/' -> {
-                    HytaleServer.get().commandManager.handleCommand(playerRef, input.removePrefix("/"))
-                }
-
-                else -> {
-                    playerRef.chat(input)
-                    CompletableFuture.completedFuture(null)
-                }
-            }
-            future.whenComplete { _, exception ->
-                if (exception != null) {
-                    println("Command failed for ${playerRef.username}: ${exception.message}")
-                }
+        synchronized(lock) {
+            if (input.isBlank()) {
                 onFinished()
+                return
+            }
+
+            if (!playerRef.isValid) {
+                playerRef.sendMessage(Message.raw("reference not found or invalid entity"))
+                return
+            }
+            val store = playerRef.reference?.store
+            if (store == null) {
+                playerRef.sendMessage(Message.raw("store not found"))
+                return
+            }
+            val world = store.externalData.world
+            world.execute {
+                val future: CompletableFuture<Void> = when (input.first()) {
+                    '/' -> {
+                        HytaleServer.get().commandManager.handleCommand(playerRef, input.removePrefix("/"))
+                    }
+
+                    else -> {
+                        playerRef.chat(input)
+                        CompletableFuture.completedFuture(null)
+                    }
+                }
+                future.whenComplete { _, exception ->
+                    if (exception != null) {
+                        println("Command failed for ${playerRef.username}: ${exception.message}")
+                    }
+                    onFinished()
+                }
             }
         }
     }

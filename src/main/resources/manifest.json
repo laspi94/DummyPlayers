@@ -9,13 +9,9 @@
     }
   ],
   "Website": "https://discord.gg/rVsUJ4keZN",
-  "ServerVersion": "*",
-  "Dependencies": {
-
-  },
-  "OptionalDependencies": {
-
-  },
+  "ServerVersion": "2026.02.17-255364b8e",
+  "Dependencies": {},
+  "OptionalDependencies": {},
   "DisabledByDefault": false,
   "Main": "me.justlime.dummyplayer.DummyPlayerPlugin",
   "IncludesAssetPack": true
