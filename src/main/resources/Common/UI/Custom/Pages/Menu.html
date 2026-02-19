@@ -8,36 +8,56 @@
     .tab-content {
         anchor-height: 1050;
     }
-    .chat-container{
+
+    .chat-container {
         layout-mode: TopScrolling;
         padding: 4;
+    }
+
+    .chat-input-row {
+        layout-mode: Left;
+        anchor-height: 40;
+    }
+
+    .chat-input-row input {
+        flex-weight: 1;
+    }
+
+    .chat-input-row button {
+        anchor-width: 80;
     }
 </style>
 
 <div class="page-overlay">
     <div class="container" data-hyui-title="Dummy Manager" style="anchor-height: 800; anchor-width: 600;">
         <div class="container-contents">
-            <div class="header"><p class="selection-text">Dummy Selection</p></div>
+            <div class="header">
+                <p class="selection-text">Dummy Selection</p>
+            </div>
             <div style="anchor-height: 8"></div>
             <select id="dummy-list" data-hyui-showlabel="true" value="None"
-                    style="anchor-width: 570; anchor-height: 50">
+                style="anchor-width: 570; anchor-height: 50">
                 <!--All Dummy Names Option-->
             </select>
 
             <div style="anchor-height: 20"></div>
-            <nav id="main-tabs" class="tabs"
-                 data-tabs="chat:Chat, behaviour:Behaviour, setting:Setting"
-                 data-selected="chat">
+            <nav id="main-tabs" class="tabs" data-tabs="chat:Chat, behaviour:Behaviour, setting:Setting"
+                data-selected="chat">
             </nav>
             <div style="anchor-height: 20"></div>
             <div id="chat-content" class="tab-content" data-hyui-tab-id="chat">
                 <div id="list" class="chat-container">
                     <!-- Dummy Received Chat Messages-->
                     {{#each messages}}
-                    <div><p style="font-size: 20">{{$text}}</p></div>
+                    <div>
+                        <p style="font-size: 20">{{$text}}</p>
+                    </div>
                     {{/each}}
                 </div>
-                <div><input type="text" id="chat-input" value=""></div>
+                <div class="chat-input-row">
+                    <input type="text" id="chat-input" value="">
+                    <button id="send-btn">Send</button>
+                </div>
             </div>
 
             <div id="behaviour-content" class="tab-content" data-hyui-tab-id="behaviour">
