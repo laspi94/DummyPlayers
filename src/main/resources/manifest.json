@@ -9,7 +9,7 @@
     }
   ],
   "Website": "https://discord.gg/rVsUJ4keZN",
-  "ServerVersion": "0.7.7",
+  "ServerVersion": ">=0.7.7",
   "Dependencies": {},
   "OptionalDependencies": {},
   "DisabledByDefault": false,
