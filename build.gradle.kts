@@ -71,9 +71,13 @@ tasks {
             json["Version"] = version
             json["IncludesAssetPack"] = includesPack
 
-            // Return updated JSON string to Gradle to write to the JAR
+            // filter() runs once per line: emit the full JSON on the first line and drop
+            // the rest, otherwise the manifest ends up repeated once per source line.
             val updatedJson = JsonOutput.prettyPrint(JsonOutput.toJson(json))
-            filter { updatedJson }
+            var written = false
+            filter { _: String ->
+                if (written) null else updatedJson.also { written = true }
+            }
         }
     }
 
