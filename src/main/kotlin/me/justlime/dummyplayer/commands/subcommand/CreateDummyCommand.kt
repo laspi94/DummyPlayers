@@ -2,8 +2,7 @@ package me.justlime.dummyplayer.commands.subcommand
 
 import com.hypixel.hytale.component.Ref
 import com.hypixel.hytale.component.Store
-import com.hypixel.hytale.math.vector.Vector3d
-import com.hypixel.hytale.math.vector.Vector3f
+import com.hypixel.hytale.math.vector.Rotation3f
 import com.hypixel.hytale.server.core.Message
 import com.hypixel.hytale.server.core.command.system.CommandContext
 import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg
@@ -18,10 +17,10 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore
 import me.justlime.dummyplayer.model.enums.DummyValidationResult
 import me.justlime.dummyplayer.service.DummyPlayerService
 import me.justlime.dummyplayer.utilities.Utilities
+import org.joml.Vector3d
 
 class CreateDummyCommand : AbstractPlayerCommand("create", "Create a dummy player") {
     var nameArgument: RequiredArg<String> = withRequiredArg("name", "Provide Player Name", ArgTypes.STRING)
-    override fun canGeneratePermission(): Boolean = false
 
     init {
         requirePermission(HytalePermissions.fromCommand("dummy.create"))
@@ -39,7 +38,7 @@ class CreateDummyCommand : AbstractPlayerCommand("create", "Create a dummy playe
         // Get position from the executing player
         val transform = world.entityStore.store.getComponent(refStore, TransformComponent.getComponentType())
         val position = transform?.position ?: Vector3d(0.0, 0.0, 0.0)
-        val rotation = transform?.rotation ?: Vector3f(0.0f, 0.0f, 0.0f)
+        val rotation = transform?.rotation ?: Rotation3f()
 
         // Prepare the Fallback Skin
         val mySkinComponent = world.entityStore.store.getComponent(refStore, PlayerSkinComponent.getComponentType())

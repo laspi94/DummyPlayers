@@ -20,8 +20,6 @@ class UpdateDummyCommand : AbstractPlayerCommand("update", "Update a dummy's ski
     private val dummyNameArg: RequiredArg<String> = withRequiredArg("name", "Name of the dummy", ArgTypes.STRING)
     private val skinSourceArg: OptionalArg<String> = withOptionalArg("skin", "Username to copy skin from", ArgTypes.STRING)
 
-    override fun canGeneratePermission(): Boolean = false
-
     init {
         requirePermission(HytalePermissions.fromCommand("dummy.update"))
     }

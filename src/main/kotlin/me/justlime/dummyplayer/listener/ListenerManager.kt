@@ -85,7 +85,7 @@ class ListenerManager(val plugin: DummyPlayerPlugin) {
 
         // DrainPlayerFromWorldEvent (Leaving World) ✖
         plugin.eventRegistry.register(DrainPlayerFromWorldEvent::class.java) { event ->
-            println("[DummyEvent] DrainPlayerFromWorld: ${event.world.name}")
+            println("[DummyEvent] DrainPlayerFromWorld: ${event.sourceWorld.name}")
         }
 
         // PlayerSetupDisconnectEvent (Pre-Disconnect) ‼

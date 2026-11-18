@@ -15,7 +15,11 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore
 class CloneDummyCommand : AbstractPlayerCommand("clone", "Clone a dummy player") {
 
     val targetArgs: OptionalArg<String> = withOptionalArg("name", "Provide Player Name", ArgTypes.STRING)
-    override fun canGeneratePermission(): Boolean = false
+
+    init {
+        // Replaces canGeneratePermission() = false (removed in 0.7.7)
+        requireNoPermission()
+    }
 
     override fun execute(
         context: CommandContext,

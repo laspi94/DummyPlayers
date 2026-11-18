@@ -15,8 +15,6 @@ import me.justlime.dummyplayer.service.DummyPlayerService
 
 class FollowCommand : AbstractPlayerCommand("follow", "Toggle dummy following you") {
     var dummyNameArg: RequiredArg<String> = withRequiredArg("dummy", "Dummy Name", ArgTypes.STRING)
-    
-    override fun canGeneratePermission(): Boolean = false
 
     init {
          requirePermission(HytalePermissions.fromCommand("dummy.follow"))

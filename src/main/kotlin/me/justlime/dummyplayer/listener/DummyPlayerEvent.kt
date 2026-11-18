@@ -12,6 +12,7 @@ import com.hypixel.hytale.server.core.universe.world.World
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore
 import me.justlime.dummyplayer.network.DummyPacketHandler
 import java.util.*
+import java.util.concurrent.CompletableFuture
 
 object DummyPlayerEvent {
 
@@ -27,13 +28,12 @@ object DummyPlayerEvent {
     }
 
 
-    fun connect(holder: Holder<EntityStore>, playerRef: PlayerRef, intendedWorld: World): World {
-        val event = HytaleServer.get().eventBus
-            .dispatchFor(PlayerConnectEvent::class.java)
-            .dispatch(
-                PlayerConnectEvent(holder, playerRef, intendedWorld)
-            ) as PlayerConnectEvent
-        return event.world ?: Universe.get().defaultWorld ?: intendedWorld
+    // Since 0.7.7 PlayerConnectEvent is an IAsyncEvent: dispatchForAsync returns a future.
+    fun connect(holder: Holder<EntityStore>, playerRef: PlayerRef, intendedWorld: World): CompletableFuture<World> {
+        return HytaleServer.get().eventBus
+            .dispatchForAsync<Void, PlayerConnectEvent>(PlayerConnectEvent::class.java)
+            .dispatch(PlayerConnectEvent(holder, playerRef, intendedWorld))
+            .thenApply { event -> event.world ?: Universe.get().defaultWorld ?: intendedWorld }
     }
 
 

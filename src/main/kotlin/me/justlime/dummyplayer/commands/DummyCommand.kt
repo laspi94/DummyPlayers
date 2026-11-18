@@ -39,6 +39,4 @@ class DummyCommand : AbstractCommand("dummy", "Manage dummy players") {
 
         return null
     }
-
-    override fun canGeneratePermission(): Boolean = true
 }

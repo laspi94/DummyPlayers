@@ -18,7 +18,7 @@ class DeleteDummyCommand : AbstractPlayerCommand("delete", "Delete a dummy playe
     init {
         requirePermission(HytalePermissions.fromCommand("dummy.delete"))
     }
-    override fun canGeneratePermission(): Boolean = false
+
     override fun execute(
         context: CommandContext,
         store: Store<EntityStore?>,

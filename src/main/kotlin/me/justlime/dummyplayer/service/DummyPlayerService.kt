@@ -1,9 +1,9 @@
 package me.justlime.dummyplayer.service
 
 import com.hypixel.hytale.component.Holder
+import com.hypixel.hytale.math.vector.Rotation3f
+import com.hypixel.hytale.math.vector.Rotation3fc
 import com.hypixel.hytale.math.vector.Transform
-import com.hypixel.hytale.math.vector.Vector3d
-import com.hypixel.hytale.math.vector.Vector3f
 import com.hypixel.hytale.protocol.PlayerSkin
 import com.hypixel.hytale.protocol.ProtocolSettings
 import com.hypixel.hytale.protocol.packets.interface_.AddToServerPlayerList
@@ -37,11 +37,13 @@ import com.hypixel.hytale.server.npc.role.support.RoleStats
 import com.hypixel.hytale.server.npc.systems.RoleChangeSystem
 import com.hypixel.hytale.server.npc.util.expression.ExecutionContext
 import com.hypixel.hytale.protocol.NetworkChannel
-import io.netty.channel.embedded.EmbeddedChannel
 import me.justlime.dummyplayer.component.DummyPlayerComponent
 import me.justlime.dummyplayer.listener.DummyPlayerEvent
 import me.justlime.dummyplayer.model.enums.DummyValidationResult
+import me.justlime.dummyplayer.network.DummyChannelConnection
 import me.justlime.dummyplayer.network.DummyPacketHandler
+import org.joml.Vector3d
+import org.joml.Vector3dc
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -59,8 +61,8 @@ object DummyPlayerService {
     fun spawnDummy(
         world: World,
         username: String,
-        position: Vector3d,
-        rotation: Vector3f,
+        position: Vector3dc,
+        rotation: Rotation3fc,
         skin: PlayerSkin
     ): CompletableFuture<DummyValidationResult> {
         val uuid = getDummyUUID(username)
@@ -76,26 +78,26 @@ object DummyPlayerService {
 
         // Core Network Objects
         val holder = EntityStore.REGISTRY.newHolder()
-        val embeddedChannel = EmbeddedChannel()
+        val connection = DummyChannelConnection()
         val protocolVersion = ProtocolVersion(ProtocolSettings.PROTOCOL_VERSION)
         val authentication = PlayerAuthentication(uuid, username)
-        val dummyHandler = DummyPacketHandler(embeddedChannel, protocolVersion, authentication)
+        val dummyHandler = DummyPacketHandler(connection, protocolVersion, authentication)
 
         // Populate all NetworkChannel slots so writePacket never hits a null channel
         for (nc in NetworkChannel.VALUES) {
-            dummyHandler.setChannel(nc, embeddedChannel)
+            dummyHandler.setChannel(nc, connection)
         }
 
         val event = DummyPlayerEvent.setupConnect(dummyHandler, username, uuid, authentication)
         if (event != null && event.isCancelled) {
-            val reason = event.reason ?: "Connection rejected."
+            val reason = event.reason?.let { it.rawText ?: it.messageId } ?: "Connection rejected."
             return CompletableFuture.completedFuture(DummyValidationResult.ConnectionDenied(reason))
         }
 
         // Setup Entity
         val chunkTracker = ChunkTracker()
-        val spawnRot = Vector3f(rotation.x, rotation.y, rotation.z)
-        val spawnPos = Vector3d(position.x, position.y + 1.0, position.z)
+        val spawnRot = Rotation3f(rotation)
+        val spawnPos = Vector3d(position.x(), position.y() + 1.0, position.z())
         val spawnTransform = Transform(spawnPos, spawnRot)
         val dummyRef = PlayerRef(holder, uuid, username, "en_US", dummyHandler, chunkTracker)
         setupHolderComponents(holder, dummyRef, chunkTracker, uuid, skin, dummyHandler, username, spawnPos, spawnRot, world)
@@ -153,7 +155,7 @@ object DummyPlayerService {
             tabListRemovePlayer(world, uuid)
         }
         try {
-            dummyRef.packetHandler.channel.close()
+            dummyRef.packetHandler.channel.closeConnection()
         } catch (_: Exception) {
             // Ignore if already closed
         }
@@ -183,9 +185,9 @@ object DummyPlayerService {
 
     internal fun createNPCEntity(
         holder: Holder<EntityStore>,
-        position: Vector3d? = null,
-        rotation: Vector3f? = null,
-        world: World? = null
+        world: World,
+        position: Vector3dc? = null,
+        rotation: Rotation3fc? = null
     ): NPCEntity {
         val npcEntity = NPCEntity()
         val plugin = NPCPlugin.get()
@@ -204,10 +206,9 @@ object DummyPlayerService {
         npcEntity.roleName = roleName
         npcEntity.roleIndex = plugin.getIndex(roleName)
 
-        if (world != null) {
-            val worldTime = world.entityStore.store.getResource(WorldTimeResource.getResourceType())
-            npcEntity.spawnInstant = worldTime.gameTime
-        }
+        val store = world.entityStore.store
+        val worldTime = store.getResource(WorldTimeResource.getResourceType())
+        npcEntity.spawnInstant = worldTime.gameTime
 
         if (position != null && rotation != null) {
             npcEntity.saveLeashInformation(position, rotation)
@@ -231,9 +232,9 @@ object DummyPlayerService {
             roleStats
         )
 
-        val role = NPCPlugin.buildRole(roleBuilder, builderInfo, builderSupport, roleIndex)
+        val role = NPCPlugin.buildRole(holder, roleBuilder, builderInfo, builderSupport, roleIndex)
         npcEntity.role = role
-        role.spawned(holder, npcEntity)
+        role.spawned(holder, npcEntity, store)
         return npcEntity
     }
 
@@ -246,11 +247,11 @@ object DummyPlayerService {
         dummyHandler: DummyPacketHandler,
         username: String,
         spawnPos: Vector3d,
-        spawnRot: Vector3f,
+        spawnRot: Rotation3f,
         world: World
     ) {
         // Core Reference & Tracking
-        chunkTracker.setDefaultMaxChunksPerSecond(dummyRef)
+        chunkTracker.setDefaultMaxSectionsPerSecond(dummyRef)
         holder.putComponent(PlayerRef.getComponentType(), dummyRef)
         holder.putComponent(ChunkTracker.getComponentType(), chunkTracker)
         holder.putComponent(UUIDComponent.getComponentType(), UUIDComponent(uuid))
@@ -277,26 +278,27 @@ object DummyPlayerService {
 
         // NPC Specifics
         holder.addComponent(DummyPlayerComponent.getComponentType(), DummyPlayerComponent())
-        val npcEntity = createNPCEntity(holder, spawnPos, spawnRot, world)
+        val npcEntity = createNPCEntity(holder, world, spawnPos, spawnRot)
         holder.addComponent(NPCEntity.getComponentType()!!, npcEntity)
         holder.addComponent(
             InteractionModule.get().interactionManagerComponent,
-            InteractionManager(npcEntity, null, NPCInteractionSimulationHandler())
+            InteractionManager(null, NPCInteractionSimulationHandler())
         )
 
         // Network / Viewer
-        dummyHandler.setPlayerRef(dummyRef, playerComponent)
+        dummyHandler.setPlayerRef(dummyRef)
         val entityViewer = EntityTrackerSystems.EntityViewer(playerComponent.viewRadius * 32, dummyHandler)
         holder.addComponent(EntityTrackerSystems.EntityViewer.getComponentType(), entityViewer)
     }
 
     /**
-     * Reflectively add dummy to Universe. players map.
+     * Reflectively add dummy to Universe.playersByUuid.
+     * Since 0.7.7 `players` is only a read-only view of that map.
      */
     private fun modifyUniversePlayersMap(action: (MutableMap<UUID, PlayerRef>) -> Unit) {
         try {
             val universe = Universe.get()
-            val playersField = Universe::class.java.getDeclaredField("players")
+            val playersField = Universe::class.java.getDeclaredField("playersByUuid")
             playersField.isAccessible = true
             @Suppress("UNCHECKED_CAST")
             val playersMap = playersField.get(universe) as MutableMap<UUID, PlayerRef>
@@ -308,7 +310,7 @@ object DummyPlayerService {
 
     // Sends packet to update Tab List
     private fun tabListAddPlayer(world: World, uuid: UUID, name: String) {
-        val listPlayer = ServerPlayerListPlayer(uuid, name, world.worldConfig.uuid, 0)
+        val listPlayer = ServerPlayerListPlayer(uuid, name, world.worldConfig.uuid, 0, false, null)
         val addPacket = AddToServerPlayerList(arrayOf(listPlayer))
         world.playerRefs.forEach { p ->
             p.packetHandler.writeNoCache(addPacket)

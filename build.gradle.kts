@@ -28,7 +28,7 @@ repositories {
 dependencies {
     implementation(libs.kotlin.stdlib)
     compileOnly(files("libs/HytaleServer.jar"))
-    implementation(files("libs/HyUI-0.8.8-release-server-version.jar"))
+    implementation(files("libs/HyUI-0.9.8-all.jar"))
     implementation(libs.annotations)
     compileOnly(libs.gson)
 }

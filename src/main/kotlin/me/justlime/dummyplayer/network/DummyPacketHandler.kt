@@ -1,21 +1,21 @@
 package me.justlime.dummyplayer.network
 
 import com.hypixel.hytale.protocol.ToClientPacket
+import com.hypixel.hytale.protocol.io.ChannelConnection
 import com.hypixel.hytale.protocol.packets.interface_.ServerMessage
 import com.hypixel.hytale.server.core.Message
 import com.hypixel.hytale.server.core.auth.PlayerAuthentication
 import com.hypixel.hytale.server.core.io.ProtocolVersion
 import com.hypixel.hytale.server.core.io.handlers.game.GamePacketHandler
-import io.netty.channel.embedded.EmbeddedChannel
 import me.justlime.dummyplayer.listener.DummyChatListener
 import java.util.concurrent.CompletableFuture
 
 
 class DummyPacketHandler(
-    embeddedChannel: EmbeddedChannel,
+    connection: ChannelConnection,
     protocolVersion: ProtocolVersion,
     authentication: PlayerAuthentication
-) : GamePacketHandler(embeddedChannel, protocolVersion, authentication) {
+) : GamePacketHandler(connection, protocolVersion, authentication) {
 
     override fun getIdentifier(): String {
         return "DummyConnection"
@@ -42,9 +42,10 @@ class DummyPacketHandler(
         write(packet)
     }
 
-    override fun writePacket(packet: ToClientPacket, cache: Boolean) {
+    override fun writePacket(packet: ToClientPacket, cache: Boolean): Boolean {
         // No-op: prevent any packet from reaching the channel
         write(packet)
+        return true
     }
 
     override fun setClientReadyForChunksFuture(future: CompletableFuture<Void>) {
