@@ -27,15 +27,12 @@ import com.hypixel.hytale.server.core.universe.PlayerRef
 import com.hypixel.hytale.server.core.universe.Universe
 import com.hypixel.hytale.server.core.universe.world.World
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore
+import com.hypixel.hytale.component.AddReason
 import com.hypixel.hytale.server.npc.NPCPlugin
-import com.hypixel.hytale.server.npc.asset.builder.Builder
-import com.hypixel.hytale.server.npc.asset.builder.BuilderSupport
 import com.hypixel.hytale.server.npc.entities.NPCEntity
 import com.hypixel.hytale.server.npc.interactions.NPCInteractionSimulationHandler
-import com.hypixel.hytale.server.npc.role.Role
-import com.hypixel.hytale.server.npc.role.support.RoleStats
+import com.hypixel.hytale.server.npc.systems.RoleBuilderSystem
 import com.hypixel.hytale.server.npc.systems.RoleChangeSystem
-import com.hypixel.hytale.server.npc.util.expression.ExecutionContext
 import com.hypixel.hytale.protocol.NetworkChannel
 import me.justlime.dummyplayer.component.DummyPlayerComponent
 import me.justlime.dummyplayer.listener.DummyPlayerEvent
@@ -183,7 +180,16 @@ object DummyPlayerService {
         RoleChangeSystem.requestRoleChange(ref, npc.role!!, roleIndex, true, store)
     }
 
-    internal fun createNPCEntity(
+    /**
+     * Attaches an [NPCEntity] with the dummy role to [holder] and builds the role.
+     *
+     * Since 0.7.7 the motion controllers read the NPCEntity from the holder while the role is
+     * built, so the component must be attached first. The role is built by the server's own
+     * [RoleBuilderSystem] (role, support components and `Role.spawned`). Players enter the world
+     * with AddReason.LOAD, which skips the spawn step, so it runs here with SPAWN; when the
+     * world later adds the holder, the system finds the role already built and does nothing.
+     */
+    internal fun attachNPCEntity(
         holder: Holder<EntityStore>,
         world: World,
         position: Vector3dc? = null,
@@ -214,29 +220,17 @@ object DummyPlayerService {
             npcEntity.saveLeashInformation(position, rotation)
         }
 
-        val roleIndex = npcEntity.roleIndex
-        val builderInfo = plugin.prepareRoleBuilderInfo(roleIndex)
+        holder.addComponent(NPCEntity.getComponentType()!!, npcEntity)
+        roleBuilderSystem.onEntityAdd(holder, AddReason.SPAWN, store)
 
-        @Suppress("UNCHECKED_CAST")
-        val roleBuilder = builderInfo.builder as Builder<Role>
-
-        val executionContext = ExecutionContext()
-        val roleStats = RoleStats()
-
-        val builderSupport = BuilderSupport(
-            plugin.builderManager,
-            npcEntity,
-            holder,
-            executionContext,
-            roleBuilder,
-            roleStats
-        )
-
-        val role = NPCPlugin.buildRole(holder, roleBuilder, builderInfo, builderSupport, roleIndex)
-        npcEntity.role = role
-        role.spawned(holder, npcEntity, store)
+        // On failure RoleBuilderSystem strips the holder and marks it FailedSpawnComponent
+        checkNotNull(npcEntity.role) {
+            "Failed to build NPC role '$roleName' for the dummy. Check the server log for the cause."
+        }
         return npcEntity
     }
+
+    private val roleBuilderSystem by lazy { RoleBuilderSystem() }
 
     private fun setupHolderComponents(
         holder: Holder<EntityStore>,
@@ -278,8 +272,7 @@ object DummyPlayerService {
 
         // NPC Specifics
         holder.addComponent(DummyPlayerComponent.getComponentType(), DummyPlayerComponent())
-        val npcEntity = createNPCEntity(holder, world, spawnPos, spawnRot)
-        holder.addComponent(NPCEntity.getComponentType()!!, npcEntity)
+        attachNPCEntity(holder, world, spawnPos, spawnRot)
         holder.addComponent(
             InteractionModule.get().interactionManagerComponent,
             InteractionManager(null, NPCInteractionSimulationHandler())
